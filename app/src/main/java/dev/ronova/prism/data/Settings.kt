@@ -23,7 +23,7 @@ data class AppSettings(
     val gestures: Boolean = true,
     val holdSpeed: Boolean = true,
     val autoPip: Boolean = true,
-    val autoLandscape: Boolean = true,
+    val orientation: PlayerOrientation = PlayerOrientation.AUTO,
     val subtitleEncoding: String = "",
     val defaultAspect: Aspect = Aspect.FIT,
     val networkCaching: Int = 1500,
@@ -41,7 +41,7 @@ object Keys {
     val GESTURES = booleanPreferencesKey("gestures")
     val HOLD = booleanPreferencesKey("hold_speed")
     val PIP = booleanPreferencesKey("auto_pip")
-    val LANDSCAPE = booleanPreferencesKey("auto_landscape")
+    val ORIENTATION = stringPreferencesKey("player_orientation")
     val SUB_ENC = stringPreferencesKey("subtitle_encoding")
     val ASPECT = stringPreferencesKey("default_aspect")
     val CACHING = intPreferencesKey("network_caching")
@@ -83,7 +83,7 @@ class SettingsRepository(private val context: Context) {
                 gestures = p[Keys.GESTURES] ?: true,
                 holdSpeed = p[Keys.HOLD] ?: true,
                 autoPip = p[Keys.PIP] ?: true,
-                autoLandscape = p[Keys.LANDSCAPE] ?: true,
+                orientation = parseEnum(p[Keys.ORIENTATION], PlayerOrientation.AUTO),
                 subtitleEncoding = p[Keys.SUB_ENC] ?: "",
                 defaultAspect = parseEnum(p[Keys.ASPECT], Aspect.FIT),
                 networkCaching = p[Keys.CACHING] ?: 1500,

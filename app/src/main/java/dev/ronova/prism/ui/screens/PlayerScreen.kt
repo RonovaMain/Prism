@@ -26,6 +26,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -61,6 +62,8 @@ import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Remove
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Replay10
+import androidx.compose.material.icons.rounded.ScreenLockLandscape
+import androidx.compose.material.icons.rounded.ScreenLockPortrait
 import androidx.compose.material.icons.rounded.ScreenRotation
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.SkipPrevious
@@ -86,10 +89,14 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -107,6 +114,7 @@ import dev.ronova.prism.MainActivity
 import dev.ronova.prism.R
 import dev.ronova.prism.data.Aspect
 import dev.ronova.prism.data.PlayRequest
+import dev.ronova.prism.data.PlayerOrientation
 import dev.ronova.prism.player.PrismPlayer
 import dev.ronova.prism.ui.PrismViewModel
 import dev.ronova.prism.ui.glass.GlassButton
@@ -153,6 +161,25 @@ private fun Activity.applyBrightness(v: Float) {
     val lp = window.attributes
     lp.screenBrightness = v
     window.attributes = lp
+}
+
+private fun PlayerOrientation.requested(): Int = when (this) {
+    // «Авто» уважает системный переключатель автоповорота и умеет все 4 положения
+    PlayerOrientation.AUTO -> ActivityInfo.SCREEN_ORIENTATION_FULL_USER
+    PlayerOrientation.LANDSCAPE -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+    PlayerOrientation.PORTRAIT -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+}
+
+private fun PlayerOrientation.next(): PlayerOrientation = when (this) {
+    PlayerOrientation.AUTO -> PlayerOrientation.LANDSCAPE
+    PlayerOrientation.LANDSCAPE -> PlayerOrientation.PORTRAIT
+    PlayerOrientation.PORTRAIT -> PlayerOrientation.AUTO
+}
+
+private fun PlayerOrientation.icon(): ImageVector = when (this) {
+    PlayerOrientation.AUTO -> Icons.Rounded.ScreenRotation
+    PlayerOrientation.LANDSCAPE -> Icons.Rounded.ScreenLockLandscape
+    PlayerOrientation.PORTRAIT -> Icons.Rounded.ScreenLockPortrait
 }
 
 private val SPEED_VALUES = listOf(0.25f, 0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f, 3f, 4f)
@@ -238,7 +265,14 @@ private fun PlayerContent(vm: PrismViewModel, request: PlayRequest, player: Pris
     var hud by remember { mutableStateOf<Hud?>(null) }
     var hudTick by remember { mutableIntStateOf(0) }
     var boost by remember { mutableStateOf(false) }
-    var landscape by remember { mutableStateOf(settings.autoLandscape) }
+    var orientation by remember { mutableStateOf(settings.orientation) }
+    var pipWasOn by remember { mutableStateOf(false) }
+    val haptic = LocalHapticFeedback.current
+    val orientNames = mapOf(
+        PlayerOrientation.AUTO to stringResource(R.string.orient_auto),
+        PlayerOrientation.LANDSCAPE to stringResource(R.string.orient_landscape),
+        PlayerOrientation.PORTRAIT to stringResource(R.string.orient_portrait),
+    )
 
     val audioManager = remember { ctx.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
     val maxVolume = remember { audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1) }
@@ -269,10 +303,10 @@ private fun PlayerContent(vm: PrismViewModel, request: PlayRequest, player: Pris
     LaunchedEffect(index, player.isPlaying) {
         if (player.isPlaying) {
             player.setRate(if (boost) 2f else speed)
-            player.setAspect(aspect)
+            player.setAspect(if (vm.inPip) Aspect.FIT else aspect)
         }
     }
-    LaunchedEffect(aspect) { player.setAspect(aspect) }
+    LaunchedEffect(aspect) { player.setAspect(if (vm.inPip) Aspect.FIT else aspect) }
 
     // ---- опрос позиции
     LaunchedEffect(Unit) {
@@ -318,34 +352,65 @@ private fun PlayerContent(vm: PrismViewModel, request: PlayRequest, player: Pris
         }
     }
 
-    // ---- экран не гаснет во время просмотра; можно уйти в «картинка в картинке»
+    // ---- экран не гаснет во время просмотра
     SideEffect {
         view.keepScreenOn = player.isPlaying
         vm.pipEligible = settings.autoPip && player.isPlaying
     }
 
-    // ---- полноэкранный режим, ориентация, яркость
+    // ---- PiP: пропорции окна по реальному размеру видео и автоматический вход (Android 12+)
+    LaunchedEffect(settings.autoPip, player.isPlaying, player.videoWidth, player.videoHeight) {
+        if (player.videoWidth > 0 && player.videoHeight > 0) {
+            vm.pipWidth = player.videoWidth
+            vm.pipHeight = player.videoHeight
+        }
+        (activity as? MainActivity)?.updatePip(settings.autoPip && player.isPlaying)
+    }
+
+    // ---- вход/выход из PiP: в маленьком окне всегда «вписать», затем пересоздаём видеовыход
+    LaunchedEffect(vm.inPip) {
+        if (vm.inPip != pipWasOn) {
+            pipWasOn = vm.inPip
+            player.setAspect(if (vm.inPip) Aspect.FIT else aspect)
+            player.onWindowModeChanged()
+        }
+    }
+
+    // ---- полноэкранный режим, яркость
     DisposableEffect(Unit) {
         val window = activity?.window
         val controller = if (window != null) WindowCompat.getInsetsController(window, view) else null
         controller?.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         controller?.hide(WindowInsetsCompat.Type.systemBars())
-        if (settingsState.value.autoLandscape) {
-            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-        }
         onDispose {
             controller?.show(WindowInsetsCompat.Type.systemBars())
             activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
             activity?.applyBrightness(WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE)
             view.keepScreenOn = false
             vm.pipEligible = false
+            (activity as? MainActivity)?.updatePip(false)
         }
     }
 
-    // ---- пауза, когда приложение ушло в фон (но не в PiP); освобождение плеера
+    // ---- ориентация: «Авто» следует за телефоном, остальные режимы — жёсткая блокировка
+    DisposableEffect(orientation) {
+        activity?.requestedOrientation = orientation.requested()
+        onDispose { }
+    }
+
+    // ---- уход в фон: пауза и отцепление поверхности; возврат — подключаем заново
+    // (иначе после сворачивания звук есть, а картинки нет)
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_STOP && !vm.inPip) player.pause()
+            when (event) {
+                Lifecycle.Event.ON_STOP -> {
+                    // ON_STOP внутри PiP означает, что окошко закрыли крестиком: звук тоже останавливаем
+                    player.pause()
+                    if (activity?.isInPictureInPictureMode != true) player.suspendVideo()
+                }
+                Lifecycle.Event.ON_START -> player.resumeVideo()
+                else -> {}
+            }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
@@ -387,6 +452,7 @@ private fun PlayerContent(vm: PrismViewModel, request: PlayRequest, player: Pris
                                 val job = scope.launch {
                                     delay(450)
                                     boost = true
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                     player.setRate(2f)
                                     showHud(Hud(Icons.Rounded.FastForward, "2×"))
                                 }
@@ -517,21 +583,49 @@ private fun PlayerContent(vm: PrismViewModel, request: PlayRequest, player: Pris
         exit = fadeOut(tween(220)),
         modifier = Modifier.fillMaxSize(),
     ) {
-        Box(Modifier.fillMaxSize()) {
+        // Размеры подстраиваются под ширину окна: в вертикальном режиме всё собрано компактно и не вылезает за край
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            val compact = maxWidth < 600.dp
+            val edge = if (compact) 14.dp else 20.dp
+            val topBtn = if (compact) 44.dp else 48.dp
+            val gap = if (compact) 10.dp else 18.dp
+            val sideBtn = if (compact) 44.dp else 54.dp
+            val seekBtn = if (compact) 52.dp else 60.dp
+            val playBtn = if (compact) 78.dp else 94.dp
+            val barBtn = if (compact) 40.dp else 46.dp
+            val barIcon = if (compact) 20.dp else 22.dp
+            val multi = request.items.size > 1
+
+            // ---- мягкие затемнения сверху и снизу: панели читаются на любом кадре
+            Box(
+                Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .height(150.dp)
+                    .background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.55f), Color.Transparent)))
+            )
+            Box(
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .height(240.dp)
+                    .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.62f))))
+            )
+
             // ---- верх
             Row(
                 Modifier
                     .align(Alignment.TopCenter)
                     .fillMaxWidth()
                     .displayCutoutPadding()
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                    .padding(horizontal = edge, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(if (compact) 10.dp else 12.dp),
             ) {
-                GlassButton(Icons.AutoMirrored.Rounded.ArrowBack, onClick = onExit, size = 46.dp, iconSize = 22.dp)
+                GlassButton(Icons.AutoMirrored.Rounded.ArrowBack, onClick = onExit, size = topBtn, iconSize = 22.dp)
                 GlassSurface(
-                    Modifier.weight(1f).height(46.dp),
-                    shape = RoundedCornerShape(23.dp),
+                    Modifier.weight(1f).height(topBtn),
+                    shape = RoundedCornerShape(topBtn / 2),
                     tint = Color.Black.copy(alpha = 0.18f),
                     elevation = 6.dp,
                 ) {
@@ -547,11 +641,12 @@ private fun PlayerContent(vm: PrismViewModel, request: PlayRequest, player: Pris
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f),
                         )
-                        if (request.items.size > 1) {
+                        if (multi) {
                             Text(
                                 "${index + 1}/${request.items.size}",
                                 color = Color.White.copy(alpha = 0.7f),
                                 style = MaterialTheme.typography.labelMedium,
+                                modifier = Modifier.padding(start = 8.dp),
                             )
                         }
                     }
@@ -559,7 +654,7 @@ private fun PlayerContent(vm: PrismViewModel, request: PlayRequest, player: Pris
                 GlassButton(
                     Icons.Rounded.Subtitles,
                     onClick = { panel = Panel.TRACKS },
-                    size = 46.dp,
+                    size = topBtn,
                     iconSize = 22.dp,
                     active = player.currentSpu >= 0,
                 )
@@ -568,20 +663,20 @@ private fun PlayerContent(vm: PrismViewModel, request: PlayRequest, player: Pris
             // ---- центр
             Row(
                 Modifier.align(Alignment.Center),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(gap),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                if (request.items.size > 1) {
+                if (multi) {
                     GlassButton(
                         Icons.Rounded.SkipPrevious,
                         onClick = { if (index > 0) switchTo(index - 1) },
-                        size = 54.dp,
+                        size = sideBtn,
                         enabled = index > 0,
                     )
                 }
-                GlassButton(Icons.Rounded.Replay10, onClick = { player.seekBy(-10_000L); interaction++ }, size = 58.dp, iconSize = 28.dp)
+                GlassButton(Icons.Rounded.Replay10, onClick = { player.seekBy(-10_000L); interaction++ }, size = seekBtn, iconSize = 28.dp)
                 GlassSurface(
-                    Modifier.size(94.dp).glassClick { player.togglePlay(); interaction++ },
+                    Modifier.size(playBtn).glassClick { player.togglePlay(); interaction++ },
                     shape = CircleShape,
                     tint = g.accent.copy(alpha = 0.32f),
                     strength = 1.3f,
@@ -596,23 +691,23 @@ private fun PlayerContent(vm: PrismViewModel, request: PlayRequest, player: Pris
                             if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                             contentDescription = null,
                             tint = Color.White,
-                            modifier = Modifier.size(48.dp),
+                            modifier = Modifier.size(playBtn * 0.5f),
                         )
                     }
                     if (player.buffering) {
                         CircularProgressIndicator(
-                            Modifier.align(Alignment.Center).size(84.dp),
+                            Modifier.align(Alignment.Center).size(playBtn - 10.dp),
                             color = Color.White.copy(alpha = 0.85f),
                             strokeWidth = 3.dp,
                         )
                     }
                 }
-                GlassButton(Icons.Rounded.Forward10, onClick = { player.seekBy(10_000L); interaction++ }, size = 58.dp, iconSize = 28.dp)
-                if (request.items.size > 1) {
+                GlassButton(Icons.Rounded.Forward10, onClick = { player.seekBy(10_000L); interaction++ }, size = seekBtn, iconSize = 28.dp)
+                if (multi) {
                     GlassButton(
                         Icons.Rounded.SkipNext,
                         onClick = { if (index < request.items.lastIndex) switchTo(index + 1) },
-                        size = 54.dp,
+                        size = sideBtn,
                         enabled = index < request.items.lastIndex,
                     )
                 }
@@ -628,13 +723,13 @@ private fun PlayerContent(vm: PrismViewModel, request: PlayRequest, player: Pris
                     .fillMaxWidth()
                     .displayCutoutPadding()
                     .navigationBarsPadding()
-                    .padding(horizontal = 16.dp, vertical = 16.dp),
-                shape = RoundedCornerShape(34.dp),
+                    .padding(horizontal = edge, vertical = if (compact) 12.dp else 16.dp),
+                shape = RoundedCornerShape(if (compact) 30.dp else 34.dp),
                 strength = 1.2f,
                 elevation = 16.dp,
                 base = g.menuBase.scaleAlpha(0.5f),
             ) {
-                Column(Modifier.padding(horizontal = 22.dp, vertical = 10.dp)) {
+                Column(Modifier.padding(horizontal = if (compact) 18.dp else 22.dp, vertical = if (compact) 8.dp else 10.dp)) {
                     Row(Modifier.fillMaxWidth()) {
                         Text(timeText(shownPos), color = Color.White, style = MaterialTheme.typography.labelLarge)
                         Spacer(Modifier.weight(1f))
@@ -664,27 +759,41 @@ private fun PlayerContent(vm: PrismViewModel, request: PlayRequest, player: Pris
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        GlassButton(Icons.Rounded.Lock, onClick = { locked = true; controlsVisible = true; interaction++ }, size = 44.dp, iconSize = 21.dp)
-                        GlassChip(speedText(speed), speed != 1f, { panel = Panel.SPEED }, icon = Icons.Rounded.Speed)
-                        GlassButton(Icons.Rounded.AspectRatio, onClick = { panel = Panel.ASPECT }, size = 44.dp, iconSize = 21.dp, active = aspect != Aspect.FIT)
-                        GlassButton(Icons.Rounded.Audiotrack, onClick = { panel = Panel.TRACKS }, size = 44.dp, iconSize = 21.dp)
+                        GlassButton(
+                            Icons.Rounded.Lock,
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                locked = true; controlsVisible = true; interaction++
+                            },
+                            size = barBtn,
+                            iconSize = barIcon,
+                        )
+                        GlassChip(
+                            speedText(speed),
+                            speed != 1f,
+                            { panel = Panel.SPEED },
+                            modifier = Modifier.height(barBtn),
+                            icon = Icons.Rounded.Speed,
+                            dense = compact,
+                        )
+                        GlassButton(Icons.Rounded.AspectRatio, onClick = { panel = Panel.ASPECT }, size = barBtn, iconSize = barIcon, active = aspect != Aspect.FIT)
+                        GlassButton(Icons.Rounded.Audiotrack, onClick = { panel = Panel.TRACKS }, size = barBtn, iconSize = barIcon)
                         GlassButton(
                             Icons.Rounded.PictureInPictureAlt,
                             onClick = { (activity as? MainActivity)?.enterPip() },
-                            size = 44.dp,
-                            iconSize = 21.dp,
+                            size = barBtn,
+                            iconSize = barIcon,
                         )
                         GlassButton(
-                            Icons.Rounded.ScreenRotation,
+                            orientation.icon(),
                             onClick = {
-                                landscape = !landscape
-                                activity?.requestedOrientation =
-                                    if (landscape) ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-                                    else ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+                                orientation = orientation.next()
+                                showHud(Hud(orientation.icon(), orientNames.getValue(orientation)))
                                 interaction++
                             },
-                            size = 44.dp,
-                            iconSize = 21.dp,
+                            size = barBtn,
+                            iconSize = barIcon,
+                            active = orientation != PlayerOrientation.AUTO,
                         )
                     }
                 }
@@ -784,6 +893,7 @@ private fun PlayerPanel(
                 exit = slideOutVertically { it / 2 } + fadeOut(),
                 modifier = Modifier.align(Alignment.BottomCenter),
             ) {
+                val maxPanelHeight = (LocalConfiguration.current.screenHeightDp * 0.9f).dp
                 GlassSurface(
                     Modifier
                         .widthIn(max = 560.dp)
@@ -791,13 +901,17 @@ private fun PlayerPanel(
                         .displayCutoutPadding()
                         .navigationBarsPadding()
                         .padding(12.dp)
+                        .heightIn(max = maxPanelHeight)
                         .pointerInput(Unit) { detectTapGestures { } },
                     shape = RoundedCornerShape(34.dp),
                     strength = 1.3f,
                     elevation = 20.dp,
                     base = g.menuBase,
                 ) {
-                    Column(Modifier.padding(horizontal = 20.dp, vertical = 18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Column(
+                        Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 18.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
                         Text(title, color = Color.White, style = MaterialTheme.typography.titleLarge)
                         content()
                     }

@@ -64,12 +64,35 @@ class MainActivity : ComponentActivity() {
     }
 
     // ---- картинка в картинке
+    private fun pipParams(autoEnter: Boolean): PictureInPictureParams? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return null
+        // Допустимые пропорции окна PiP: от 1:2.39 до 2.39:1
+        var w = vm.pipWidth.coerceAtLeast(1)
+        var h = vm.pipHeight.coerceAtLeast(1)
+        val ratio = w.toFloat() / h
+        if (ratio > 2.39f) { w = 239; h = 100 } else if (ratio < 0.42f) { w = 42; h = 100 }
+        val b = PictureInPictureParams.Builder().setAspectRatio(Rational(w, h))
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            // Android 12+: плавный автоматический вход в PiP при выходе жестом или кнопкой «Домой»
+            b.setAutoEnterEnabled(autoEnter)
+            b.setSeamlessResizeEnabled(true)
+        }
+        return b.build()
+    }
+
+    /** Вызывается из плеера: обновляет пропорции окна PiP и разрешает автоматический вход. */
+    fun updatePip(autoEnter: Boolean) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        try {
+            pipParams(autoEnter)?.let { setPictureInPictureParams(it) }
+        } catch (_: Exception) {
+        }
+    }
+
     fun enterPip() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             try {
-                enterPictureInPictureMode(
-                    PictureInPictureParams.Builder().setAspectRatio(Rational(16, 9)).build()
-                )
+                pipParams(autoEnter = true)?.let { enterPictureInPictureMode(it) }
             } catch (_: Exception) {
             }
         }
@@ -77,7 +100,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
-        if (vm.pipEligible) enterPip()
+        // До Android 12 входим вручную; с 12-й это делает setAutoEnterEnabled
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S && vm.pipEligible) enterPip()
     }
 
     override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: Configuration) {

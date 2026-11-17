@@ -57,7 +57,11 @@
     <string name="set_gestures_sub">Seek, brightness (left) and volume (right)</string>
     <string name="set_hold">Hold for 2× speed</string>
     <string name="set_hold_sub">Press and hold the screen</string>
-    <string name="set_landscape">Open videos in landscape</string>
+    <string name="set_orientation">Screen orientation in player</string>
+    <string name="set_orientation_sub">Auto follows the phone and the system rotation setting</string>
+    <string name="orient_auto">Auto</string>
+    <string name="orient_landscape">Landscape</string>
+    <string name="orient_portrait">Portrait</string>
     <string name="set_pip">Picture-in-picture</string>
     <string name="set_pip_sub">Keep playing in a small window when you leave the app</string>
     <string name="set_default_aspect">Default aspect ratio</string>

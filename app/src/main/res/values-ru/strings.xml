@@ -57,7 +57,11 @@
     <string name="set_gestures_sub">Перемотка, яркость (слева) и громкость (справа)</string>
     <string name="set_hold">Удержание для ускорения 2×</string>
     <string name="set_hold_sub">Нажмите и удерживайте экран</string>
-    <string name="set_landscape">Открывать видео в альбомной ориентации</string>
+    <string name="set_orientation">Ориентация в плеере</string>
+    <string name="set_orientation_sub">«Авто» поворачивает видео вместе с телефоном</string>
+    <string name="orient_auto">Авто</string>
+    <string name="orient_landscape">Альбомная</string>
+    <string name="orient_portrait">Книжная</string>
     <string name="set_pip">Картинка в картинке</string>
     <string name="set_pip_sub">Продолжать в маленьком окне, когда вы выходите из приложения</string>
     <string name="set_default_aspect">Формат кадра по умолчанию</string>

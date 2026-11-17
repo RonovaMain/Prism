@@ -52,15 +52,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.ClipOp
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
@@ -80,6 +84,46 @@ import dev.ronova.prism.ui.theme.PrismPink
 import dev.ronova.prism.ui.theme.PrismViolet
 
 internal fun Color.scaleAlpha(f: Float): Color = copy(alpha = (alpha * f).coerceIn(0f, 1f))
+
+
+private fun Outline.toPath(): Path = when (this) {
+    is Outline.Rectangle -> Path().apply { addRect(rect) }
+    is Outline.Rounded -> Path().apply { addRoundRect(roundRect) }
+    is Outline.Generic -> path
+}
+
+/**
+ * Мягкая тень, которая рисуется ТОЛЬКО снаружи формы.
+ *
+ * Системный Modifier.shadow под полупрозрачным стеклом просвечивает сквозь заливку: внутри
+ * кнопок и карточек появлялись ромбы, квадраты и прямоугольные «призраки». Здесь тень строится
+ * из слоёв обводки с убывающей прозрачностью, а внутренняя область вырезается, поэтому стекло
+ * остаётся чистым.
+ */
+fun Modifier.glassShadow(shape: Shape, elevation: Dp, color: Color): Modifier {
+    if (elevation.value <= 0f || color.alpha <= 0f) return this
+    return drawBehind {
+        val outline = shape.createOutline(size, layoutDirection, this)
+        val path = outline.toPath()
+        val reach = elevation.toPx() * 1.5f
+        val dy = elevation.toPx() * 0.35f
+        val layers = (reach / 2.5.dp.toPx()).toInt().coerceIn(5, 12)
+        val perLayer = color.alpha * 1.25f / layers
+        clipPath(path, ClipOp.Difference) {
+            translate(top = dy) {
+                for (i in layers downTo 1) {
+                    val w = 2f * reach * i / layers
+                    val falloff = 1f - (i - 1f) / layers
+                    drawOutline(
+                        outline = outline,
+                        color = color.copy(alpha = (perLayer * (0.55f + 0.45f * falloff)).coerceIn(0f, 1f)),
+                        style = Stroke(width = w),
+                    )
+                }
+            }
+        }
+    }
+}
 
 /** Нажатие с «пружинным» эффектом, как у жидкого стекла: элемент слегка проседает и упруго возвращается. */
 fun Modifier.glassClick(
@@ -137,7 +181,7 @@ fun GlassSurface(
     }
     Box(
         modifier
-            .shadow(elevation, shape, ambientColor = g.shadow, spotColor = g.shadow)
+            .glassShadow(shape, elevation, g.shadow)
             .clip(shape)
             .background(base)
             .background(Brush.verticalGradient(listOf(g.fillTop.scaleAlpha(strength), g.fillBottom.scaleAlpha(strength))))
@@ -200,6 +244,7 @@ fun GlassChip(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     icon: ImageVector? = null,
+    dense: Boolean = false,
 ) {
     val g = LocalGlass.current
     GlassSurface(
@@ -209,7 +254,9 @@ fun GlassChip(
         elevation = 3.dp,
     ) {
         Row(
-            Modifier.padding(horizontal = 16.dp, vertical = 9.dp),
+            Modifier
+                .align(Alignment.Center)
+                .padding(horizontal = if (dense) 12.dp else 16.dp, vertical = if (dense) 6.dp else 9.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
@@ -349,7 +396,7 @@ fun GlassSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit, modifier: 
                 .padding(3.dp)
                 .offset(x = thumbX)
                 .size(26.dp)
-                .shadow(4.dp, CircleShape, ambientColor = g.shadow, spotColor = g.shadow)
+                .glassShadow(CircleShape, 4.dp, g.shadow)
                 .clip(CircleShape)
                 .background(Brush.verticalGradient(listOf(Color.White, Color(0xFFE6E1FF))))
                 .border(1.dp, Color.White.copy(alpha = 0.9f), CircleShape)

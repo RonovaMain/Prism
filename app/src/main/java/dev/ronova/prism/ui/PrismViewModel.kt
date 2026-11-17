@@ -81,6 +81,9 @@ class PrismViewModel(app: Application) : AndroidViewModel(app) {
     var finishOnExit = false
     var inPip by mutableStateOf(false)
     var pipEligible by mutableStateOf(false)
+    /** Пропорции видео для окна PiP (ширина, высота); 0 — ещё неизвестно. */
+    var pipWidth by mutableIntStateOf(16)
+    var pipHeight by mutableIntStateOf(9)
 
     init {
         if (hasPermission) loadVideos()

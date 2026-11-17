@@ -55,6 +55,7 @@ import dev.ronova.prism.R
 import dev.ronova.prism.data.Aspect
 import dev.ronova.prism.data.HwMode
 import dev.ronova.prism.data.Keys
+import dev.ronova.prism.data.PlayerOrientation
 import dev.ronova.prism.data.ThemeMode
 import dev.ronova.prism.ui.PrismViewModel
 import dev.ronova.prism.ui.glass.GlassChip
@@ -269,7 +270,11 @@ internal fun SettingsTab(vm: PrismViewModel) {
                 SwitchRow(stringResource(R.string.set_hold), stringResource(R.string.set_hold_sub), s.holdSpeed) {
                     vm.setPref(Keys.HOLD, it)
                 }
-                SwitchRow(stringResource(R.string.set_landscape), null, s.autoLandscape) { vm.setPref(Keys.LANDSCAPE, it) }
+                ChipGroup(stringResource(R.string.set_orientation), stringResource(R.string.set_orientation_sub)) {
+                    GlassChip(stringResource(R.string.orient_auto), s.orientation == PlayerOrientation.AUTO, { vm.setPref(Keys.ORIENTATION, PlayerOrientation.AUTO.name) })
+                    GlassChip(stringResource(R.string.orient_landscape), s.orientation == PlayerOrientation.LANDSCAPE, { vm.setPref(Keys.ORIENTATION, PlayerOrientation.LANDSCAPE.name) })
+                    GlassChip(stringResource(R.string.orient_portrait), s.orientation == PlayerOrientation.PORTRAIT, { vm.setPref(Keys.ORIENTATION, PlayerOrientation.PORTRAIT.name) })
+                }
                 SwitchRow(stringResource(R.string.set_pip), stringResource(R.string.set_pip_sub), s.autoPip) { vm.setPref(Keys.PIP, it) }
                 ChipGroup(stringResource(R.string.set_default_aspect)) {
                     for (a in Aspect.values()) {

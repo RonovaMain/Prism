@@ -10,6 +10,9 @@ enum class HwMode { AUTO, OFF, FORCE }
 /** Формат кадра. */
 enum class Aspect { FIT, CROP, STRETCH, R16_9, R4_3, ORIGINAL }
 
+/** Ориентация экрана в плеере: по датчику (автоповорот) / альбомная / книжная. */
+enum class PlayerOrientation { AUTO, LANDSCAPE, PORTRAIT }
+
 enum class LibSort { DATE, NAME, DURATION, SIZE }
 
 data class VideoItem(
