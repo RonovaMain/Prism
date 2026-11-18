@@ -35,7 +35,7 @@ android {
         minSdk = 26
         targetSdk = 35
         versionCode = (findProperty("versionCode") as String?)?.toIntOrNull() ?: 1
-        versionName = "1.1.3"
+        versionName = "1.2.7"
 
         ndk {
             // libVLC весит много: оставляем только реальные ABI телефонов и планшетов

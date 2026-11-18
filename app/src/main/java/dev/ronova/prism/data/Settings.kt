@@ -23,6 +23,9 @@ data class AppSettings(
     val gestures: Boolean = true,
     val holdSpeed: Boolean = true,
     val autoPip: Boolean = true,
+    /** Тени под стеклом: в интерфейсе приложения включены, в плеере по умолчанию выключены. */
+    val uiShadows: Boolean = true,
+    val playerShadows: Boolean = false,
     val orientation: PlayerOrientation = PlayerOrientation.AUTO,
     val subtitleEncoding: String = "",
     val defaultAspect: Aspect = Aspect.FIT,
@@ -41,6 +44,8 @@ object Keys {
     val GESTURES = booleanPreferencesKey("gestures")
     val HOLD = booleanPreferencesKey("hold_speed")
     val PIP = booleanPreferencesKey("auto_pip")
+    val UI_SHADOWS = booleanPreferencesKey("ui_shadows")
+    val PLAYER_SHADOWS = booleanPreferencesKey("player_shadows")
     val ORIENTATION = stringPreferencesKey("player_orientation")
     val SUB_ENC = stringPreferencesKey("subtitle_encoding")
     val ASPECT = stringPreferencesKey("default_aspect")
@@ -83,6 +88,8 @@ class SettingsRepository(private val context: Context) {
                 gestures = p[Keys.GESTURES] ?: true,
                 holdSpeed = p[Keys.HOLD] ?: true,
                 autoPip = p[Keys.PIP] ?: true,
+                uiShadows = p[Keys.UI_SHADOWS] ?: true,
+                playerShadows = p[Keys.PLAYER_SHADOWS] ?: false,
                 orientation = parseEnum(p[Keys.ORIENTATION], PlayerOrientation.AUTO),
                 subtitleEncoding = p[Keys.SUB_ENC] ?: "",
                 defaultAspect = parseEnum(p[Keys.ASPECT], Aspect.FIT),

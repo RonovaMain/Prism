@@ -41,6 +41,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -83,6 +84,9 @@ import dev.ronova.prism.ui.theme.LocalGlass
 import dev.ronova.prism.ui.theme.PrismCyan
 import dev.ronova.prism.ui.theme.PrismPink
 import dev.ronova.prism.ui.theme.PrismViolet
+
+/** Рисовать ли тени под стеклом. Приложение и плеер выставляют своё значение из настроек. */
+val LocalGlassShadows = staticCompositionLocalOf { true }
 
 internal fun Color.scaleAlpha(f: Float): Color = copy(alpha = (alpha * f).coerceIn(0f, 1f))
 
@@ -168,6 +172,7 @@ fun GlassSurface(
     content: @Composable BoxScope.() -> Unit,
 ) {
     val g = LocalGlass.current
+    val shadowsOn = LocalGlassShadows.current
     val rim = remember(g) {
         Brush.linearGradient(
             colorStops = arrayOf(
@@ -182,7 +187,7 @@ fun GlassSurface(
     }
     Box(
         modifier
-            .glassShadow(shape, elevation, g.shadow)
+            .glassShadow(shape, if (shadowsOn) elevation else 0.dp, g.shadow)
             .clip(shape)
             .background(base)
             .background(Brush.verticalGradient(listOf(g.fillTop.scaleAlpha(strength), g.fillBottom.scaleAlpha(strength))))
@@ -366,6 +371,7 @@ fun GlassTabBar(
 @Composable
 fun GlassSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit, modifier: Modifier = Modifier) {
     val g = LocalGlass.current
+    val shadowsOn = LocalGlassShadows.current
     val on by animateFloatAsState(if (checked) 1f else 0f, spring(dampingRatio = 0.7f, stiffness = 500f), label = "on")
     val thumbX by animateDpAsState(
         if (checked) 22.dp else 0.dp,
@@ -397,7 +403,7 @@ fun GlassSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit, modifier: 
                 .padding(3.dp)
                 .offset(x = thumbX)
                 .size(26.dp)
-                .glassShadow(CircleShape, 4.dp, g.shadow)
+                .glassShadow(CircleShape, if (shadowsOn) 4.dp else 0.dp, g.shadow)
                 .clip(CircleShape)
                 .background(Brush.verticalGradient(listOf(Color.White, Color(0xFFE6E1FF))))
                 .border(1.dp, Color.White.copy(alpha = 0.9f), CircleShape)

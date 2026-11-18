@@ -53,7 +53,6 @@ import androidx.compose.material.icons.rounded.Audiotrack
 import androidx.compose.material.icons.rounded.BrightnessMedium
 import androidx.compose.material.icons.rounded.FastForward
 import androidx.compose.material.icons.rounded.FastRewind
-import androidx.compose.material.icons.rounded.Forward10
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.LockOpen
 import androidx.compose.material.icons.rounded.Pause
@@ -61,7 +60,6 @@ import androidx.compose.material.icons.rounded.PictureInPictureAlt
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Remove
 import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.Replay10
 import androidx.compose.material.icons.rounded.ScreenLockLandscape
 import androidx.compose.material.icons.rounded.ScreenLockPortrait
 import androidx.compose.material.icons.rounded.ScreenRotation
@@ -122,6 +120,7 @@ import dev.ronova.prism.ui.glass.GlassChip
 import dev.ronova.prism.ui.glass.GlassMenuItem
 import dev.ronova.prism.ui.glass.GlassSeekBar
 import dev.ronova.prism.ui.glass.GlassSurface
+import dev.ronova.prism.ui.glass.LocalGlassShadows
 import dev.ronova.prism.ui.glass.glassClick
 import dev.ronova.prism.ui.glass.scaleAlpha
 import dev.ronova.prism.ui.theme.DarkGlass
@@ -588,15 +587,15 @@ private fun PlayerContent(vm: PrismViewModel, request: PlayRequest, player: Pris
             val compact = maxWidth < 600.dp
             val edge = if (compact) 14.dp else 20.dp
             val topBtn = if (compact) 44.dp else 48.dp
-            val gap = if (compact) 10.dp else 18.dp
-            val sideBtn = if (compact) 44.dp else 54.dp
-            val seekBtn = if (compact) 52.dp else 60.dp
-            val playBtn = if (compact) 78.dp else 94.dp
+            val gap = if (compact) 28.dp else 44.dp
+            val sideBtn = if (compact) 50.dp else 58.dp
+            val playBtn = if (compact) 84.dp else 98.dp
             val barBtn = if (compact) 40.dp else 46.dp
             val barIcon = if (compact) 20.dp else 22.dp
             val multi = request.items.size > 1
 
-            // ---- мягкие затемнения сверху и снизу: панели читаются на любом кадре
+            // ---- затемнения сверху и снизу — часть «теней»: включаются только если тени в плеере разрешены
+            if (LocalGlassShadows.current) {
             Box(
                 Modifier
                     .align(Alignment.TopCenter)
@@ -611,6 +610,7 @@ private fun PlayerContent(vm: PrismViewModel, request: PlayRequest, player: Pris
                     .height(240.dp)
                     .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.62f))))
             )
+            }
 
             // ---- верх
             Row(
@@ -674,7 +674,6 @@ private fun PlayerContent(vm: PrismViewModel, request: PlayRequest, player: Pris
                         enabled = index > 0,
                     )
                 }
-                GlassButton(Icons.Rounded.Replay10, onClick = { player.seekBy(-10_000L); interaction++ }, size = seekBtn, iconSize = 28.dp)
                 GlassSurface(
                     Modifier.size(playBtn).glassClick { player.togglePlay(); interaction++ },
                     shape = CircleShape,
@@ -702,7 +701,6 @@ private fun PlayerContent(vm: PrismViewModel, request: PlayRequest, player: Pris
                         )
                     }
                 }
-                GlassButton(Icons.Rounded.Forward10, onClick = { player.seekBy(10_000L); interaction++ }, size = seekBtn, iconSize = 28.dp)
                 if (multi) {
                     GlassButton(
                         Icons.Rounded.SkipNext,

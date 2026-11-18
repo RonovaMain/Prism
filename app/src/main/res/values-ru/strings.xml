@@ -49,6 +49,10 @@
     <string name="theme_dark">Тёмная</string>
     <string name="theme_light">Светлая</string>
     <string name="theme_system">Системная</string>
+    <string name="set_shadows_ui">Тени в интерфейсе</string>
+    <string name="set_shadows_ui_sub">Мягкие тени под карточками и кнопками</string>
+    <string name="set_shadows_player">Тени в плеере</string>
+    <string name="set_shadows_player_sub">По умолчанию выключены: управление остаётся максимально прозрачным</string>
     <string name="set_playback">Воспроизведение</string>
     <string name="set_remember">Запоминать место просмотра</string>
     <string name="set_remember_sub">Продолжать с того же места</string>

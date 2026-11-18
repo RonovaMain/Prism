@@ -255,6 +255,12 @@ internal fun SettingsTab(vm: PrismViewModel) {
                     GlassChip(stringResource(R.string.theme_light), s.themeMode == ThemeMode.LIGHT, { vm.setPref(Keys.THEME, ThemeMode.LIGHT.name) })
                     GlassChip(stringResource(R.string.theme_system), s.themeMode == ThemeMode.SYSTEM, { vm.setPref(Keys.THEME, ThemeMode.SYSTEM.name) })
                 }
+                SwitchRow(stringResource(R.string.set_shadows_ui), stringResource(R.string.set_shadows_ui_sub), s.uiShadows) {
+                    vm.setPref(Keys.UI_SHADOWS, it)
+                }
+                SwitchRow(stringResource(R.string.set_shadows_player), stringResource(R.string.set_shadows_player_sub), s.playerShadows) {
+                    vm.setPref(Keys.PLAYER_SHADOWS, it)
+                }
             }
         }
 

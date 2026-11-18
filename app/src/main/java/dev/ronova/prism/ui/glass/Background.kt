@@ -121,17 +121,17 @@ fun PrismLogo(size: Dp, modifier: Modifier = Modifier) {
         val w = this.size.width
         val h = this.size.height
         // рамка треугольника: x от 0.20 до 0.80 — ровно по центру холста
-        val a = Offset(w * 0.20f, h * 0.17f)
-        val b = Offset(w * 0.20f, h * 0.83f)
-        val c = Offset(w * 0.80f, h * 0.50f)
-        val m = Offset(w * 0.20f, h * 0.50f)
+        val a = Offset(w * 0.30f, h * 0.20f)
+        val b = Offset(w * 0.30f, h * 0.80f)
+        val c = Offset(w * 0.86f, h * 0.50f)
+        val m = Offset(w * 0.30f, h * 0.50f)
         val tri = roundedTrianglePath(a, b, c, w * 0.10f)
         clipPath(tri) {
             drawRect(
                 brush = Brush.linearGradient(
                     colors = listOf(PrismCyan, PrismViolet, PrismPink, PrismAmber),
-                    start = Offset(w * 0.20f, h * 0.20f),
-                    end = Offset(w * 0.82f, h * 0.62f),
+                    start = Offset(w * 0.30f, h * 0.22f),
+                    end = Offset(w * 0.88f, h * 0.62f),
                 )
             )
             // верхняя грань — светлая
@@ -146,7 +146,7 @@ fun PrismLogo(size: Dp, modifier: Modifier = Modifier) {
                 Brush.linearGradient(
                     listOf(Color.White.copy(alpha = 0.6f), Color.White.copy(alpha = 0.05f)),
                     start = a,
-                    end = Offset(w * 0.6f, h * 0.5f),
+                    end = Offset(w * 0.62f, h * 0.5f),
                 ),
             )
             // нижняя грань — темнее
