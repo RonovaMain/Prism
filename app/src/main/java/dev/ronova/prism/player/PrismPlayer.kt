@@ -45,6 +45,8 @@ class PrismPlayer(
     private val handler = Handler(Looper.getMainLooper())
     private var layout: VLCVideoLayout? = null
     private var hookedSurface: SurfaceView? = null
+    /** TextureView вместо SurfaceView: видео попадает в слой Compose, и стекло может его преломлять. */
+    private var useTexture = false
     private var surfaceSeen = false
     private var suspended = false
     private var savedVideoTrack = -1
@@ -134,9 +136,10 @@ class PrismPlayer(
 
     // ---------------------------------------------------------------- экран и запуск
 
-    fun attach(l: VLCVideoLayout) {
+    fun attach(l: VLCVideoLayout, texture: Boolean = false) {
         layout = l
-        mediaPlayer.attachViews(l, null, true, false)
+        useTexture = texture
+        mediaPlayer.attachViews(l, null, true, texture)
         hookSurface()
     }
 
@@ -150,6 +153,8 @@ class PrismPlayer(
 
     /** Следим за пересозданием поверхности: после этого видеовыход libVLC нужно создать заново. */
     private fun hookSurface() {
+        // у TextureView поверхность живёт вместе с самим видом, а слушатель на нём уже занят libVLC
+        if (useTexture) return
         val sv = findSurface(layout) ?: return
         if (sv === hookedSurface) return
         hookedSurface = sv
@@ -216,7 +221,7 @@ class PrismPlayer(
         val l = layout ?: return
         suspended = false
         try {
-            mediaPlayer.attachViews(l, null, true, false)
+            mediaPlayer.attachViews(l, null, true, useTexture)
         } catch (_: Exception) {
         }
         hookSurface()

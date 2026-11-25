@@ -53,6 +53,8 @@
     <string name="set_shadows_ui_sub">Soft shadows under cards and buttons</string>
     <string name="set_shadows_player">Shadows in the player</string>
     <string name="set_shadows_player_sub">Off by default: the controls stay fully transparent</string>
+    <string name="set_glass_video">Glass over video</string>
+    <string name="set_glass_video_sub">Player controls refract the picture. Applies to the next video; turn off if playback stutters</string>
     <string name="set_playback">Playback</string>
     <string name="set_remember">Remember position</string>
     <string name="set_remember_sub">Resume where you stopped</string>

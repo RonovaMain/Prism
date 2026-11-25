@@ -108,6 +108,12 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.CompositionLocalProvider
+import com.kyant.backdrop.backdrops.LayerBackdrop
+import com.kyant.backdrop.backdrops.emptyBackdrop
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import dev.ronova.prism.ui.glass.LocalBackdrop
 import dev.ronova.prism.MainActivity
 import dev.ronova.prism.R
 import dev.ronova.prism.data.Aspect
@@ -235,8 +241,29 @@ private fun BoxScope.ErrorPane(onRetry: (() -> Unit)?, onExit: () -> Unit) {
     }
 }
 
+/**
+ * Решаем один раз на запуск плеера: либо видео идёт через TextureView и попадает в слой Compose (тогда кнопки
+ * и панели преломляют картинку), либо остаётся обычная SurfaceView, а стекло рисуется без фона.
+ */
 @Composable
 private fun PlayerContent(vm: PrismViewModel, request: PlayRequest, player: PrismPlayer, onExit: () -> Unit) {
+    val settings by vm.settings.collectAsStateWithLifecycle()
+    val glassVideo = remember { settings.glassOverVideo }
+    val videoBackdrop = rememberLayerBackdrop()
+    CompositionLocalProvider(LocalBackdrop provides if (glassVideo) videoBackdrop else emptyBackdrop()) {
+        PlayerContentInner(vm, request, player, onExit, glassVideo, videoBackdrop)
+    }
+}
+
+@Composable
+private fun PlayerContentInner(
+    vm: PrismViewModel,
+    request: PlayRequest,
+    player: PrismPlayer,
+    onExit: () -> Unit,
+    glassVideo: Boolean,
+    videoBackdrop: LayerBackdrop,
+) {
     val ctx = LocalContext.current
     val view = LocalView.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -432,10 +459,17 @@ private fun PlayerContent(vm: PrismViewModel, request: PlayRequest, player: Pris
     }
 
     // ================================================================= картинка
-    AndroidView(
-        factory = { c -> VLCVideoLayout(c).also { player.attach(it) } },
-        modifier = Modifier.fillMaxSize(),
-    )
+    // Запись видео — то, что преломляют стеклянные кнопки. Чёрный фон внутри записи закрывает поля по краям кадра.
+    Box(
+        Modifier
+            .fillMaxSize()
+            .then(if (glassVideo) Modifier.layerBackdrop(videoBackdrop).background(Color.Black) else Modifier)
+    ) {
+        AndroidView(
+            factory = { c -> VLCVideoLayout(c).also { player.attach(it, glassVideo) } },
+            modifier = Modifier.fillMaxSize(),
+        )
+    }
 
     val inPip = vm.inPip
 
@@ -726,6 +760,7 @@ private fun PlayerContent(vm: PrismViewModel, request: PlayRequest, player: Pris
                 strength = 1.2f,
                 elevation = 16.dp,
                 base = g.menuBase.scaleAlpha(0.5f),
+                provideBackdrop = true,
             ) {
                 Column(Modifier.padding(horizontal = if (compact) 18.dp else 22.dp, vertical = if (compact) 8.dp else 10.dp)) {
                     Row(Modifier.fillMaxWidth()) {
@@ -905,6 +940,7 @@ private fun PlayerPanel(
                     strength = 1.3f,
                     elevation = 20.dp,
                     base = g.menuBase,
+                    provideBackdrop = true,
                 ) {
                     Column(
                         Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 18.dp),

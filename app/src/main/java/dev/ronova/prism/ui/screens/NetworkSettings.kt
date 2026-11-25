@@ -190,7 +190,7 @@ private fun SettingsSection(title: String, content: @Composable () -> Unit) {
             style = MaterialTheme.typography.titleSmall,
             modifier = Modifier.padding(start = 8.dp),
         )
-        GlassSurface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(30.dp), elevation = 6.dp) {
+        GlassSurface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(30.dp), elevation = 6.dp, provideBackdrop = true) {
             Column(Modifier.padding(horizontal = 18.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 content()
             }
@@ -260,6 +260,9 @@ internal fun SettingsTab(vm: PrismViewModel) {
                 }
                 SwitchRow(stringResource(R.string.set_shadows_player), stringResource(R.string.set_shadows_player_sub), s.playerShadows) {
                     vm.setPref(Keys.PLAYER_SHADOWS, it)
+                }
+                SwitchRow(stringResource(R.string.set_glass_video), stringResource(R.string.set_glass_video_sub), s.glassOverVideo) {
+                    vm.setPref(Keys.GLASS_VIDEO, it)
                 }
             }
         }

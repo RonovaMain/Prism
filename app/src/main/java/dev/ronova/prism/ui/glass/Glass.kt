@@ -60,6 +60,7 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.backdrops.emptyBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.lens
@@ -151,6 +152,7 @@ fun GlassSurface(
     elevation: Dp = 10.dp,
     base: Color = Color.Transparent,
     refraction: Boolean = true,
+    provideBackdrop: Boolean = false,
     content: @Composable BoxScope.() -> Unit,
 ) {
     val g = LocalGlass.current
@@ -160,6 +162,8 @@ fun GlassSurface(
     val fill = remember(g, strength, base, tint) { glassFill(g, strength, base, tint) }
     val highlight = remember(strength) { Highlight.Default.copy(alpha = strength.coerceIn(0f, 1f)) }
     val shadow = glassShadowOrNull(g, shadowsOn, elevation)
+    // Кнопки, ползунки и переключатели внутри панели преломляют саму панель, а не то, что за ней
+    val exported = if (provideBackdrop) rememberLayerBackdrop() else null
 
     Box(
         modifier.drawBackdrop(
@@ -178,10 +182,16 @@ fun GlassSurface(
             },
             highlight = { highlight },
             shadow = if (shadow != null) ({ shadow }) else null,
+            exportedBackdrop = exported,
             onDrawSurface = fill,
         ),
-        content = content,
-    )
+    ) {
+        if (exported != null) {
+            CompositionLocalProvider(LocalBackdrop provides exported) { content() }
+        } else {
+            content()
+        }
+    }
 }
 
 /** Круглая кнопка с иконкой — LiquidButton из библиотеки. */
