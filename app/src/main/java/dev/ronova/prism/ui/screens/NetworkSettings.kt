@@ -56,6 +56,7 @@ import dev.ronova.prism.data.Aspect
 import dev.ronova.prism.data.HwMode
 import dev.ronova.prism.data.Keys
 import dev.ronova.prism.data.PlayerOrientation
+import dev.ronova.prism.data.GlassMode
 import dev.ronova.prism.data.ThemeMode
 import dev.ronova.prism.ui.PrismViewModel
 import dev.ronova.prism.ui.glass.GlassChip
@@ -255,6 +256,16 @@ internal fun SettingsTab(vm: PrismViewModel) {
                     GlassChip(stringResource(R.string.theme_light), s.themeMode == ThemeMode.LIGHT, { vm.setPref(Keys.THEME, ThemeMode.LIGHT.name) })
                     GlassChip(stringResource(R.string.theme_system), s.themeMode == ThemeMode.SYSTEM, { vm.setPref(Keys.THEME, ThemeMode.SYSTEM.name) })
                 }
+                ChipGroup(stringResource(R.string.set_glass_mode)) {
+                    GlassChip(stringResource(R.string.glass_off), s.glassMode == GlassMode.OFF, { vm.setPref(Keys.GLASS_MODE, GlassMode.OFF.name) })
+                    GlassChip(stringResource(R.string.glass_lite), s.glassMode == GlassMode.LITE, { vm.setPref(Keys.GLASS_MODE, GlassMode.LITE.name) })
+                    GlassChip(stringResource(R.string.glass_full), s.glassMode == GlassMode.FULL, { vm.setPref(Keys.GLASS_MODE, GlassMode.FULL.name) })
+                }
+                Text(
+                    stringResource(R.string.set_glass_mode_sub),
+                    color = LocalGlass.current.textDim,
+                    style = MaterialTheme.typography.bodySmall,
+                )
                 SwitchRow(stringResource(R.string.set_shadows_ui), stringResource(R.string.set_shadows_ui_sub), s.uiShadows) {
                     vm.setPref(Keys.UI_SHADOWS, it)
                 }

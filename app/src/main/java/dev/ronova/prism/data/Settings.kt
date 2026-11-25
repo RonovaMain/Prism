@@ -26,6 +26,7 @@ data class AppSettings(
     /** Тени под стеклом: в интерфейсе приложения включены, в плеере по умолчанию выключены. */
     val uiShadows: Boolean = true,
     val playerShadows: Boolean = false,
+    val glassMode: GlassMode = GlassMode.LITE,
     val glassOverVideo: Boolean = true,
     val orientation: PlayerOrientation = PlayerOrientation.AUTO,
     val subtitleEncoding: String = "",
@@ -47,6 +48,7 @@ object Keys {
     val PIP = booleanPreferencesKey("auto_pip")
     val UI_SHADOWS = booleanPreferencesKey("ui_shadows")
     val PLAYER_SHADOWS = booleanPreferencesKey("player_shadows")
+    val GLASS_MODE = stringPreferencesKey("glass_mode")
     val GLASS_VIDEO = booleanPreferencesKey("glass_over_video")
     val ORIENTATION = stringPreferencesKey("player_orientation")
     val SUB_ENC = stringPreferencesKey("subtitle_encoding")
@@ -92,6 +94,7 @@ class SettingsRepository(private val context: Context) {
                 autoPip = p[Keys.PIP] ?: true,
                 uiShadows = p[Keys.UI_SHADOWS] ?: true,
                 playerShadows = p[Keys.PLAYER_SHADOWS] ?: false,
+                glassMode = parseEnum(p[Keys.GLASS_MODE], GlassMode.LITE),
                 glassOverVideo = p[Keys.GLASS_VIDEO] ?: true,
                 orientation = parseEnum(p[Keys.ORIENTATION], PlayerOrientation.AUTO),
                 subtitleEncoding = p[Keys.SUB_ENC] ?: "",

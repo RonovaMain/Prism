@@ -114,6 +114,10 @@ import com.kyant.backdrop.backdrops.emptyBackdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import dev.ronova.prism.ui.glass.LocalBackdrop
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import dev.ronova.prism.data.GlassMode
+import dev.ronova.prism.ui.glass.LocalGlassMode
 import dev.ronova.prism.MainActivity
 import dev.ronova.prism.R
 import dev.ronova.prism.data.Aspect
@@ -248,7 +252,9 @@ private fun BoxScope.ErrorPane(onRetry: (() -> Unit)?, onExit: () -> Unit) {
 @Composable
 private fun PlayerContent(vm: PrismViewModel, request: PlayRequest, player: PrismPlayer, onExit: () -> Unit) {
     val settings by vm.settings.collectAsStateWithLifecycle()
-    val glassVideo = remember { settings.glassOverVideo }
+    val glassMode = LocalGlassMode.current
+    // TextureView (видео в слое Compose) включаем только в «Полном» режиме и только если не выключено отдельно
+    val glassVideo = remember { glassMode == GlassMode.FULL && settings.glassOverVideo }
     val videoBackdrop = rememberLayerBackdrop()
     CompositionLocalProvider(LocalBackdrop provides if (glassVideo) videoBackdrop else emptyBackdrop()) {
         PlayerContentInner(vm, request, player, onExit, glassVideo, videoBackdrop)
@@ -616,17 +622,23 @@ private fun PlayerContentInner(
         exit = fadeOut(tween(220)),
         modifier = Modifier.fillMaxSize(),
     ) {
-        // Размеры подстраиваются под ширину окна: в вертикальном режиме всё собрано компактно и не вылезает за край
+        // Размеры подстраиваются под окно: узкое (вертикальный телефон) собирается компактно, а низкое
+        // (телефон в альбомной ориентации, маленькое окно) — ещё плотнее, чтобы кнопки не наезжали друг на друга
         BoxWithConstraints(Modifier.fillMaxSize()) {
             val compact = maxWidth < 600.dp
-            val edge = if (compact) 14.dp else 20.dp
-            val topBtn = if (compact) 44.dp else 48.dp
-            val gap = if (compact) 28.dp else 44.dp
-            val sideBtn = if (compact) 50.dp else 58.dp
-            val playBtn = if (compact) 84.dp else 98.dp
-            val barBtn = if (compact) 40.dp else 46.dp
-            val barIcon = if (compact) 20.dp else 22.dp
+            val low = maxHeight < 480.dp
+            val edge = if (compact || low) 14.dp else 20.dp
+            val topBtn = if (low) 40.dp else if (compact) 44.dp else 48.dp
+            val gap = if (compact || low) 28.dp else 44.dp
+            val sideBtn = if (low) 44.dp else if (compact) 50.dp else 58.dp
+            val playBtn = if (low) 64.dp else if (compact) 84.dp else 98.dp
+            val barBtn = if (low) 38.dp else if (compact) 40.dp else 46.dp
+            val barIcon = if (low) 19.dp else if (compact) 20.dp else 22.dp
             val multi = request.items.size > 1
+            // Высота нижней панели измеряется: в низком окне центральные кнопки сдвигаются в свободную середину
+            var dockHeightPx by remember { mutableIntStateOf(0) }
+            val dockHeight = with(LocalDensity.current) { dockHeightPx.toDp() }
+            val centerShift = if (low) maxOf(0.dp, dockHeight - (topBtn + 28.dp)) else 0.dp
 
             // ---- затемнения сверху и снизу — часть «теней»: включаются только если тени в плеере разрешены
             if (LocalGlassShadows.current) {
@@ -652,7 +664,7 @@ private fun PlayerContentInner(
                     .align(Alignment.TopCenter)
                     .fillMaxWidth()
                     .displayCutoutPadding()
-                    .padding(horizontal = edge, vertical = 14.dp),
+                    .padding(horizontal = edge, vertical = if (low) 8.dp else 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(if (compact) 10.dp else 12.dp),
             ) {
@@ -696,7 +708,7 @@ private fun PlayerContentInner(
 
             // ---- центр
             Row(
-                Modifier.align(Alignment.Center),
+                Modifier.align(Alignment.Center).padding(bottom = centerShift),
                 horizontalArrangement = Arrangement.spacedBy(gap),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -751,27 +763,19 @@ private fun PlayerContentInner(
             GlassSurface(
                 Modifier
                     .align(Alignment.BottomCenter)
-                    .widthIn(max = 760.dp)
+                    .onSizeChanged { dockHeightPx = it.height }
+                    .widthIn(max = if (low) 640.dp else 760.dp)
                     .fillMaxWidth()
                     .displayCutoutPadding()
                     .navigationBarsPadding()
-                    .padding(horizontal = edge, vertical = if (compact) 12.dp else 16.dp),
-                shape = RoundedCornerShape(if (compact) 30.dp else 34.dp),
+                    .padding(horizontal = edge, vertical = if (low) 8.dp else if (compact) 12.dp else 16.dp),
+                shape = RoundedCornerShape(if (low) 26.dp else if (compact) 30.dp else 34.dp),
                 strength = 1.2f,
                 elevation = 16.dp,
                 base = g.menuBase.scaleAlpha(0.5f),
                 provideBackdrop = true,
             ) {
-                Column(Modifier.padding(horizontal = if (compact) 18.dp else 22.dp, vertical = if (compact) 8.dp else 10.dp)) {
-                    Row(Modifier.fillMaxWidth()) {
-                        Text(timeText(shownPos), color = Color.White, style = MaterialTheme.typography.labelLarge)
-                        Spacer(Modifier.weight(1f))
-                        Text(
-                            if (len > 0) "-" + timeText((len - shownPos).coerceAtLeast(0L)) else "LIVE",
-                            color = Color.White.copy(alpha = 0.75f),
-                            style = MaterialTheme.typography.labelLarge,
-                        )
-                    }
+                val seekBar: @Composable (Modifier) -> Unit = { seekModifier ->
                     GlassSeekBar(
                         fraction = if (len > 0) (shownPos.toFloat() / len.toFloat()) else 0f,
                         enabled = len > 0,
@@ -785,8 +789,32 @@ private fun PlayerContentInner(
                             position = (it * len).toLong()
                             dragging = false
                         },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = seekModifier,
                     )
+                }
+                val elapsedText = timeText(shownPos)
+                val remainingText = if (len > 0) "-" + timeText((len - shownPos).coerceAtLeast(0L)) else "LIVE"
+                Column(
+                    Modifier.padding(
+                        horizontal = if (low) 16.dp else if (compact) 18.dp else 22.dp,
+                        vertical = if (low) 4.dp else if (compact) 8.dp else 10.dp,
+                    )
+                ) {
+                    if (low) {
+                        // низкое окно: время, ползунок и остаток в одной строке — панель вдвое ниже
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Text(elapsedText, color = Color.White, style = MaterialTheme.typography.labelLarge)
+                            seekBar(Modifier.weight(1f).padding(horizontal = 10.dp))
+                            Text(remainingText, color = Color.White.copy(alpha = 0.75f), style = MaterialTheme.typography.labelLarge)
+                        }
+                    } else {
+                        Row(Modifier.fillMaxWidth()) {
+                            Text(elapsedText, color = Color.White, style = MaterialTheme.typography.labelLarge)
+                            Spacer(Modifier.weight(1f))
+                            Text(remainingText, color = Color.White.copy(alpha = 0.75f), style = MaterialTheme.typography.labelLarge)
+                        }
+                        seekBar(Modifier.fillMaxWidth())
+                    }
                     Row(
                         Modifier.fillMaxWidth().padding(bottom = 4.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -807,7 +835,7 @@ private fun PlayerContentInner(
                             { panel = Panel.SPEED },
                             modifier = Modifier.height(barBtn),
                             icon = Icons.Rounded.Speed,
-                            dense = compact,
+                            dense = compact || low,
                         )
                         GlassButton(Icons.Rounded.AspectRatio, onClick = { panel = Panel.ASPECT }, size = barBtn, iconSize = barIcon, active = aspect != Aspect.FIT)
                         GlassButton(Icons.Rounded.Audiotrack, onClick = { panel = Panel.TRACKS }, size = barBtn, iconSize = barIcon)

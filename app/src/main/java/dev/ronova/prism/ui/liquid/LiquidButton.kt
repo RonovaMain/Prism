@@ -26,6 +26,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastCoerceAtMost
 import androidx.compose.ui.util.lerp
 import com.kyant.backdrop.Backdrop
+import dev.ronova.prism.data.GlassMode
+import dev.ronova.prism.ui.glass.LocalGlassMode
 import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.lens
@@ -73,12 +75,13 @@ fun LiquidButton(
     }
 
     // Без изображения позади (например, поверх видео) эффекты ничего не показали бы — не тратим на них слой.
-    val hasBackdrop = backdrop !== com.kyant.backdrop.backdrops.emptyBackdrop()
+    val hasBackdrop = backdrop !== com.kyant.backdrop.backdrops.emptyBackdrop() &&
+            LocalGlassMode.current == GlassMode.FULL
 
     Row(
         modifier
             .drawBackdrop(
-                backdrop = backdrop,
+                backdrop = if (hasBackdrop) backdrop else com.kyant.backdrop.backdrops.emptyBackdrop(),
                 shape = { shape },
                 effects = if (hasBackdrop) {
                     {

@@ -54,7 +54,12 @@
     <string name="set_shadows_player">Тени в плеере</string>
     <string name="set_shadows_player_sub">По умолчанию выключены: управление остаётся максимально прозрачным</string>
     <string name="set_glass_video">Стекло поверх видео</string>
-    <string name="set_glass_video_sub">Кнопки плеера преломляют картинку. Действует со следующего видео; выключите, если воспроизведение тормозит</string>
+    <string name="set_glass_video_sub">Только в полном режиме: кнопки плеера преломляют картинку. Действует со следующего видео; выключите, если воспроизведение тормозит</string>
+    <string name="set_glass_mode">Жидкое стекло</string>
+    <string name="glass_off">Выкл</string>
+    <string name="glass_lite">Лёгкое</string>
+    <string name="glass_full">Полное</string>
+    <string name="set_glass_mode_sub">Выкл: простое плоское стекло, самое лёгкое для устройства. Лёгкое: кнопки и панели Liquid Glass без размытия и преломления. Полное: размытие, преломление и стекло поверх видео — нужно мощное устройство.</string>
     <string name="set_playback">Воспроизведение</string>
     <string name="set_remember">Запоминать место просмотра</string>
     <string name="set_remember_sub">Продолжать с того же места</string>

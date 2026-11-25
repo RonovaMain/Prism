@@ -67,6 +67,7 @@ import com.kyant.backdrop.effects.lens
 import com.kyant.backdrop.effects.vibrancy
 import com.kyant.backdrop.highlight.Highlight
 import com.kyant.backdrop.shadow.Shadow
+import dev.ronova.prism.data.GlassMode
 import dev.ronova.prism.ui.liquid.Capsule
 import dev.ronova.prism.ui.liquid.LiquidBottomTab
 import dev.ronova.prism.ui.liquid.LiquidBottomTabs
@@ -91,6 +92,9 @@ val LocalGlassShadows = staticCompositionLocalOf { true }
  * не попадает) остаётся пустая подложка, и стекло рисуется только заливкой, бликом и тенью.
  */
 val LocalBackdrop = staticCompositionLocalOf<Backdrop> { emptyBackdrop() }
+
+/** Режим стекла из настроек: Выкл — прежнее плоское, Лёгкое — Liquid Glass без размытия и линзы, Полное — всё. */
+val LocalGlassMode = staticCompositionLocalOf { GlassMode.LITE }
 
 internal fun Color.scaleAlpha(f: Float): Color = copy(alpha = (alpha * f).coerceIn(0f, 1f))
 
@@ -144,7 +148,7 @@ fun Modifier.glassClick(
  * [refraction] = false отключает линзу (для больших карточек в списках — заметно легче для GPU).
  */
 @Composable
-fun GlassSurface(
+private fun LiquidGlassSurface(
     modifier: Modifier = Modifier,
     shape: Shape = RoundedCornerShape(28.dp),
     tint: Color = Color.Transparent,
@@ -158,16 +162,18 @@ fun GlassSurface(
     val g = LocalGlass.current
     val backdrop = LocalBackdrop.current
     val shadowsOn = LocalGlassShadows.current
-    val hasBackdrop = backdrop !== emptyBackdrop()
+    val full = LocalGlassMode.current == GlassMode.FULL
+    val hasBackdrop = full && backdrop !== emptyBackdrop()
     val fill = remember(g, strength, base, tint) { glassFill(g, strength, base, tint) }
     val highlight = remember(strength) { Highlight.Default.copy(alpha = strength.coerceIn(0f, 1f)) }
     val shadow = glassShadowOrNull(g, shadowsOn, elevation)
     // Кнопки, ползунки и переключатели внутри панели преломляют саму панель, а не то, что за ней
-    val exported = if (provideBackdrop) rememberLayerBackdrop() else null
+    val exported = if (provideBackdrop && full) rememberLayerBackdrop() else null
 
     Box(
         modifier.drawBackdrop(
-            backdrop = backdrop,
+            // без эффектов фон не рисуем вообще: иначе стекло перекрасило бы то, что лежит под ним
+            backdrop = if (hasBackdrop) backdrop else emptyBackdrop(),
             shape = { shape },
             effects = if (hasBackdrop) {
                 {
@@ -196,7 +202,7 @@ fun GlassSurface(
 
 /** Круглая кнопка с иконкой — LiquidButton из библиотеки. */
 @Composable
-fun GlassButton(
+private fun LiquidGlassButton(
     icon: ImageVector,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -235,7 +241,7 @@ fun GlassButton(
 
 /** Крупная круглая кнопка с произвольным содержимым (play/pause в плеере) — тоже LiquidButton. */
 @Composable
-fun GlassRoundButton(
+private fun LiquidGlassRoundButton(
     onClick: () -> Unit,
     size: Dp,
     modifier: Modifier = Modifier,
@@ -266,7 +272,7 @@ fun GlassRoundButton(
 
 /** Капсула-чип (фильтры, действия) — тоже LiquidButton. */
 @Composable
-fun GlassChip(
+private fun LiquidGlassChip(
     text: String,
     selected: Boolean,
     onClick: () -> Unit,
@@ -303,20 +309,23 @@ fun GlassChip(
 /** Маленькая «капсула» поверх изображений: длительность, качество. */
 @Composable
 fun GlassTag(text: String, modifier: Modifier = Modifier) {
-    GlassSurface(
-        modifier = modifier,
-        shape = Capsule(),
-        tint = Color.Black.copy(alpha = 0.32f),
-        elevation = 0.dp,
-        refraction = false,
-    ) {
-        Text(
-            text,
-            color = Color.White,
-            style = MaterialTheme.typography.labelSmall,
-            maxLines = 1,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-        )
+    // бирка лежит поверх превью, а не поверх фона приложения — преломлять ей нечего
+    CompositionLocalProvider(LocalBackdrop provides emptyBackdrop()) {
+        GlassSurface(
+            modifier = modifier,
+            shape = Capsule(),
+            tint = Color.Black.copy(alpha = 0.32f),
+            elevation = 0.dp,
+            refraction = false,
+        ) {
+            Text(
+                text,
+                color = Color.White,
+                style = MaterialTheme.typography.labelSmall,
+                maxLines = 1,
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+            )
+        }
     }
 }
 
@@ -328,7 +337,7 @@ data class TabItem(val icon: ImageVector, val label: String)
  * [backdrop] по умолчанию — фон приложения; HomeScreen передаёт фон вместе с прокручиваемым содержимым.
  */
 @Composable
-fun GlassTabBar(
+private fun LiquidGlassTabBar(
     items: List<TabItem>,
     selected: Int,
     onSelect: (Int) -> Unit,
@@ -366,7 +375,7 @@ fun GlassTabBar(
 
 /** Переключатель — LiquidToggle из библиотеки (бегунок тянется и преломляет трек). */
 @Composable
-fun GlassSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit, modifier: Modifier = Modifier) {
+private fun LiquidGlassSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit, modifier: Modifier = Modifier) {
     val g = LocalGlass.current
     val checkedState = rememberUpdatedState(checked)
     val changeState = rememberUpdatedState(onCheckedChange)
@@ -494,7 +503,7 @@ fun GlassMenuItem(
 
 /** Ползунок перемотки — LiquidSlider из библиотеки: бегунок-«капля» растёт при касании и преломляет трек. */
 @Composable
-fun GlassSeekBar(
+private fun LiquidGlassSeekBar(
     fraction: Float,
     enabled: Boolean,
     onChange: (Float) -> Unit,
@@ -518,4 +527,123 @@ fun GlassSeekBar(
         accentColor = g.accent,
         trackColor = if (g.dark) Color.White.copy(alpha = 0.22f) else Color(0xFF15121F).copy(alpha = 0.16f),
     )
+}
+
+// ------------------------------------------------------------------------------------------------
+// Публичные компоненты: выбирают прежнее плоское стекло (режим «Выкл») или Liquid Glass.
+// ------------------------------------------------------------------------------------------------
+
+@Composable
+fun GlassSurface(
+    modifier: Modifier = Modifier,
+    shape: Shape = RoundedCornerShape(28.dp),
+    tint: Color = Color.Transparent,
+    strength: Float = 1f,
+    elevation: Dp = 10.dp,
+    base: Color = Color.Transparent,
+    refraction: Boolean = true,
+    provideBackdrop: Boolean = false,
+    content: @Composable BoxScope.() -> Unit,
+) {
+    if (LocalGlassMode.current == GlassMode.OFF) {
+        ClassicSurface(modifier, shape, tint, strength, elevation, base, content)
+    } else {
+        LiquidGlassSurface(modifier, shape, tint, strength, elevation, base, refraction, provideBackdrop, content)
+    }
+}
+
+@Composable
+fun GlassButton(
+    icon: ImageVector,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    size: Dp = 48.dp,
+    iconSize: Dp = 24.dp,
+    active: Boolean = false,
+    enabled: Boolean = true,
+    strength: Float = 1f,
+    contentDescription: String? = null,
+) {
+    if (LocalGlassMode.current == GlassMode.OFF) {
+        ClassicButton(icon, onClick, modifier, size, iconSize, active, enabled, strength, contentDescription)
+    } else {
+        LiquidGlassButton(icon, onClick, modifier, size, iconSize, active, enabled, strength, contentDescription)
+    }
+}
+
+/** Крупная круглая кнопка с произвольным содержимым (play/pause в плеере). */
+@Composable
+fun GlassRoundButton(
+    onClick: () -> Unit,
+    size: Dp,
+    modifier: Modifier = Modifier,
+    tint: Color = Color.Transparent,
+    strength: Float = 1f,
+    elevation: Dp = 16.dp,
+    content: @Composable BoxScope.() -> Unit,
+) {
+    if (LocalGlassMode.current == GlassMode.OFF) {
+        ClassicRoundButton(onClick, size, modifier, tint, strength, elevation, content)
+    } else {
+        LiquidGlassRoundButton(onClick, size, modifier, tint, strength, elevation, content)
+    }
+}
+
+@Composable
+fun GlassChip(
+    text: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    icon: ImageVector? = null,
+    dense: Boolean = false,
+) {
+    if (LocalGlassMode.current == GlassMode.OFF) {
+        ClassicChip(text, selected, onClick, modifier, icon, dense)
+    } else {
+        LiquidGlassChip(text, selected, onClick, modifier, icon, dense)
+    }
+}
+
+/**
+ * Плавающая панель вкладок. [backdrop] по умолчанию — фон приложения; HomeScreen в Полном режиме передаёт
+ * фон вместе с прокручиваемым содержимым.
+ */
+@Composable
+fun GlassTabBar(
+    items: List<TabItem>,
+    selected: Int,
+    onSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+    backdrop: Backdrop = LocalBackdrop.current,
+) {
+    if (LocalGlassMode.current == GlassMode.OFF) {
+        ClassicTabBar(items, selected, onSelect, modifier)
+    } else {
+        LiquidGlassTabBar(items, selected, onSelect, modifier, backdrop)
+    }
+}
+
+@Composable
+fun GlassSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit, modifier: Modifier = Modifier) {
+    if (LocalGlassMode.current == GlassMode.OFF) {
+        ClassicSwitch(checked, onCheckedChange, modifier)
+    } else {
+        LiquidGlassSwitch(checked, onCheckedChange, modifier)
+    }
+}
+
+@Composable
+fun GlassSeekBar(
+    fraction: Float,
+    enabled: Boolean,
+    onChange: (Float) -> Unit,
+    onChangeFinished: (Float) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    if (LocalGlassMode.current == GlassMode.OFF) {
+        ClassicSeekBar(fraction, enabled, onChange, onChangeFinished, modifier)
+    } else {
+        LiquidGlassSeekBar(fraction, enabled, onChange, onChangeFinished, modifier)
+    }
 }

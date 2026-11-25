@@ -7,6 +7,9 @@ enum class ThemeMode { SYSTEM, DARK, LIGHT }
 /** Аппаратное декодирование: авто / выключено / принудительно. */
 enum class HwMode { AUTO, OFF, FORCE }
 
+/** Выкл — прежнее плоское стекло; Лёгкое — компоненты Liquid Glass без размытия и преломления; Полное — все эффекты. */
+enum class GlassMode { OFF, LITE, FULL }
+
 /** Формат кадра. */
 enum class Aspect { FIT, CROP, STRETCH, R16_9, R4_3, ORIGINAL }
 

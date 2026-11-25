@@ -90,7 +90,9 @@ import dev.ronova.prism.ui.glass.GlassSurface
 import dev.ronova.prism.ui.glass.GlassTabBar
 import dev.ronova.prism.ui.glass.GlassTag
 import dev.ronova.prism.ui.glass.GlassTextField
+import dev.ronova.prism.data.GlassMode
 import dev.ronova.prism.ui.glass.LocalBackdrop
+import dev.ronova.prism.ui.glass.LocalGlassMode
 import dev.ronova.prism.ui.glass.PrismBackground
 import dev.ronova.prism.ui.glass.PrismFolderIcon
 import dev.ronova.prism.ui.glass.PrismLogo
@@ -154,8 +156,10 @@ fun HomeScreen(vm: PrismViewModel, animate: Boolean) {
         // вкладок, она преломляет и фон, и их. Сама панель в запись не входит (иначе стекло рисовало бы себя).
         val background = LocalBackdrop.current
         val content = rememberLayerBackdrop()
-        val tabBackdrop = rememberCombinedBackdrop(background, content)
-        Box(Modifier.matchParentSize().layerBackdrop(content)) {
+        val full = LocalGlassMode.current == GlassMode.FULL
+        val combined = rememberCombinedBackdrop(background, content)
+        val tabBackdrop = if (full) combined else background
+        Box(Modifier.matchParentSize().then(if (full) Modifier.layerBackdrop(content) else Modifier)) {
             Crossfade(targetState = vm.tab, label = "tab") { tab ->
                 when (tab) {
                     0 -> VideosTab(vm)

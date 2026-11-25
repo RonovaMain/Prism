@@ -8,6 +8,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.ronova.prism.ui.glass.LocalGlassMode
 import dev.ronova.prism.ui.glass.LocalGlassShadows
 import dev.ronova.prism.ui.screens.HomeScreen
 import dev.ronova.prism.ui.screens.PlayerScreen
@@ -17,6 +18,7 @@ import dev.ronova.prism.ui.theme.PrismTheme
 fun PrismRoot(vm: PrismViewModel, dark: Boolean, onFinish: () -> Unit) {
     val settings by vm.settings.collectAsStateWithLifecycle()
     PrismTheme(dark) {
+        CompositionLocalProvider(LocalGlassMode provides settings.glassMode) {
         Box(Modifier.fillMaxSize()) {
             // Библиотека остаётся под плеером (чтобы не терять положение списка), но фон при этом не анимируется
             CompositionLocalProvider(LocalGlassShadows provides settings.uiShadows) {
@@ -33,6 +35,7 @@ fun PrismRoot(vm: PrismViewModel, dark: Boolean, onFinish: () -> Unit) {
                     }
                 }
             }
+        }
         }
     }
 }

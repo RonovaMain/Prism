@@ -31,6 +31,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastCoerceIn
 import androidx.compose.ui.util.fastRoundToInt
 import androidx.compose.ui.util.lerp
+import dev.ronova.prism.data.GlassMode
+import dev.ronova.prism.ui.glass.LocalGlassMode
 import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberBackdrop
@@ -65,6 +67,8 @@ fun LiquidSlider(
         contentAlignment = Alignment.CenterStart
     ) {
         val trackWidth = constraints.maxWidth
+        val currentTrackWidth by rememberUpdatedState(trackWidth) // см. комментарий в LiquidBottomTabs
+        val full = LocalGlassMode.current == GlassMode.FULL
         val currentOnValueChange by rememberUpdatedState(onValueChange)
         val currentOnValueChangeFinished by rememberUpdatedState(onValueChangeFinished)
 
@@ -91,7 +95,7 @@ fun LiquidSlider(
                     if (!didDrag) {
                         didDrag = dragAmount.x != 0f
                     }
-                    val delta = (valueRange.endInclusive - valueRange.start) * (dragAmount.x / trackWidth)
+                    val delta = (valueRange.endInclusive - valueRange.start) * (dragAmount.x / currentTrackWidth)
                     currentOnValueChange(
                         if (isLtr) (targetValue + delta).coerceIn(valueRange)
                         else (targetValue - delta).coerceIn(valueRange)
@@ -116,7 +120,7 @@ fun LiquidSlider(
                     .pointerInput(animationScope, enabled) {
                         if (!enabled) return@pointerInput
                         detectTapGestures { position ->
-                            val delta = (valueRange.endInclusive - valueRange.start) * (position.x / trackWidth)
+                            val delta = (valueRange.endInclusive - valueRange.start) * (position.x / currentTrackWidth)
                             val targetValue =
                                 (if (isLtr) valueRange.start + delta
                                 else valueRange.endInclusive - delta)
@@ -167,13 +171,15 @@ fun LiquidSlider(
                     ),
                     shape = { Capsule() },
                     effects = {
-                        val progress = dampedDragAnimation.pressProgress
-                        blur(8f.dp.toPx() * (1f - progress))
-                        lens(
-                            10f.dp.toPx() * progress,
-                            14f.dp.toPx() * progress,
-                            chromaticAberration = true
-                        )
+                        if (full) {
+                            val progress = dampedDragAnimation.pressProgress
+                            blur(8f.dp.toPx() * (1f - progress))
+                            lens(
+                                10f.dp.toPx() * progress,
+                                14f.dp.toPx() * progress,
+                                chromaticAberration = true
+                            )
+                        }
                     },
                     highlight = {
                         val progress = dampedDragAnimation.pressProgress

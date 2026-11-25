@@ -26,7 +26,9 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.kyant.backdrop.backdrops.emptyBackdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
+import dev.ronova.prism.data.GlassMode
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import dev.ronova.prism.ui.theme.GlassTokens
 import dev.ronova.prism.ui.theme.LocalGlass
@@ -71,6 +73,7 @@ fun PrismBackground(
 ) {
     val g = LocalGlass.current
     val backdrop = rememberLayerBackdrop()
+    val liquid = LocalGlassMode.current != GlassMode.OFF // в режиме «Выкл» двойная отрисовка фона не нужна
 
     // Одна и та же структура и при animate = true, и при false: содержимое не пересоздаётся при смене режима.
     val transition = if (animate) rememberInfiniteTransition(label = "bg") else null
@@ -87,12 +90,12 @@ fun PrismBackground(
         label = "b",
     )
 
-    CompositionLocalProvider(LocalBackdrop provides backdrop) {
+    CompositionLocalProvider(LocalBackdrop provides if (liquid) backdrop else emptyBackdrop()) {
         Box(modifier) {
             Box(
                 Modifier
                     .matchParentSize()
-                    .layerBackdrop(backdrop)
+                    .then(if (liquid) Modifier.layerBackdrop(backdrop) else Modifier)
                     .background(g.background)
                     .drawBehind { drawOrbs(g, a?.value ?: 0.3f, b?.value ?: 0.4f) },
             )

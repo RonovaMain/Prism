@@ -54,7 +54,12 @@
     <string name="set_shadows_player">Shadows in the player</string>
     <string name="set_shadows_player_sub">Off by default: the controls stay fully transparent</string>
     <string name="set_glass_video">Glass over video</string>
-    <string name="set_glass_video_sub">Player controls refract the picture. Applies to the next video; turn off if playback stutters</string>
+    <string name="set_glass_video_sub">Full mode only: player controls refract the picture. Applies to the next video; turn off if playback stutters</string>
+    <string name="set_glass_mode">Liquid Glass</string>
+    <string name="glass_off">Off</string>
+    <string name="glass_lite">Light</string>
+    <string name="glass_full">Full</string>
+    <string name="set_glass_mode_sub">Off: the simple flat look, lightest for the device. Light: Liquid Glass buttons and panels without blur or refraction. Full: blur, refraction and glass over video — needs a powerful device.</string>
     <string name="set_playback">Playback</string>
     <string name="set_remember">Remember position</string>
     <string name="set_remember_sub">Resume where you stopped</string>
