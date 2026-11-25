@@ -28,14 +28,14 @@ val libvlcVersion: String = (findProperty("libvlcVersion") as String?) ?: "3.6.0
 
 android {
     namespace = "dev.ronova.prism"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "dev.ronova.prism"
         minSdk = 26
         targetSdk = 35
         versionCode = (findProperty("versionCode") as String?)?.toIntOrNull() ?: 1
-        versionName = "1.2.7"
+        versionName = "1.3.0"
 
         ndk {
             // libVLC весит много: оставляем только реальные ABI телефонов и планшетов
@@ -102,7 +102,7 @@ android {
 }
 
 dependencies {
-    implementation(platform("androidx.compose:compose-bom:2024.10.01"))
+    implementation(platform("androidx.compose:compose-bom:2025.12.00"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.foundation:foundation")

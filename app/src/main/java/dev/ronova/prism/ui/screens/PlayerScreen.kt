@@ -118,10 +118,10 @@ import dev.ronova.prism.ui.PrismViewModel
 import dev.ronova.prism.ui.glass.GlassButton
 import dev.ronova.prism.ui.glass.GlassChip
 import dev.ronova.prism.ui.glass.GlassMenuItem
+import dev.ronova.prism.ui.glass.GlassRoundButton
 import dev.ronova.prism.ui.glass.GlassSeekBar
 import dev.ronova.prism.ui.glass.GlassSurface
 import dev.ronova.prism.ui.glass.LocalGlassShadows
-import dev.ronova.prism.ui.glass.glassClick
 import dev.ronova.prism.ui.glass.scaleAlpha
 import dev.ronova.prism.ui.theme.DarkGlass
 import dev.ronova.prism.ui.theme.LocalGlass
@@ -674,9 +674,9 @@ private fun PlayerContent(vm: PrismViewModel, request: PlayRequest, player: Pris
                         enabled = index > 0,
                     )
                 }
-                GlassSurface(
-                    Modifier.size(playBtn).glassClick { player.togglePlay(); interaction++ },
-                    shape = CircleShape,
+                GlassRoundButton(
+                    onClick = { player.togglePlay(); interaction++ },
+                    size = playBtn,
                     tint = g.accent.copy(alpha = 0.32f),
                     strength = 1.3f,
                     elevation = 16.dp,

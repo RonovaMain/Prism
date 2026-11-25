@@ -12,7 +12,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
@@ -26,6 +26,8 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import dev.ronova.prism.ui.theme.GlassTokens
 import dev.ronova.prism.ui.theme.LocalGlass
 import dev.ronova.prism.ui.theme.PrismAmber
@@ -54,7 +56,13 @@ private fun DrawScope.drawOrbs(g: GlassTokens, a: Float, b: Float) {
     orb(Offset(w * (0.15f + 0.35f * b), h * (0.97f - 0.25f * a)), w * 0.95f, PrismPink, 0.28f * k)
 }
 
-/** Фон приложения: тёмная база и медленно дрейфующие цветные пятна, сквозь которые «светится» стекло. */
+/**
+ * Фон приложения: тёмная база и медленно дрейфующие цветные пятна, сквозь которые «светится» стекло.
+ *
+ * Фон записывается в слой библиотеки Backdrop (layerBackdrop) и раздаётся всему содержимому через
+ * [LocalBackdrop]: каждая стеклянная кнопка, чип и панель преломляет и размывает именно этот фон.
+ * Запись содержит только сам фон, без содержимого, поэтому стекло внутри содержимого не рисует «само себя».
+ */
 @Composable
 fun PrismBackground(
     modifier: Modifier = Modifier,
@@ -62,33 +70,34 @@ fun PrismBackground(
     content: @Composable BoxScope.() -> Unit,
 ) {
     val g = LocalGlass.current
-    if (animate) {
-        val t = rememberInfiniteTransition(label = "bg")
-        val a by t.animateFloat(
-            initialValue = 0f,
-            targetValue = 1f,
-            animationSpec = infiniteRepeatable(tween(26000, easing = LinearEasing), RepeatMode.Reverse),
-            label = "a",
-        )
-        val b by t.animateFloat(
-            initialValue = 0f,
-            targetValue = 1f,
-            animationSpec = infiniteRepeatable(tween(34000, easing = LinearEasing), RepeatMode.Reverse),
-            label = "b",
-        )
-        Box(
-            modifier
-                .background(g.background)
-                .drawBehind { drawOrbs(g, a, b) },
-            content = content,
-        )
-    } else {
-        Box(
-            modifier
-                .background(g.background)
-                .drawBehind { drawOrbs(g, 0.3f, 0.4f) },
-            content = content,
-        )
+    val backdrop = rememberLayerBackdrop()
+
+    // Одна и та же структура и при animate = true, и при false: содержимое не пересоздаётся при смене режима.
+    val transition = if (animate) rememberInfiniteTransition(label = "bg") else null
+    val a = transition?.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(26000, easing = LinearEasing), RepeatMode.Reverse),
+        label = "a",
+    )
+    val b = transition?.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(34000, easing = LinearEasing), RepeatMode.Reverse),
+        label = "b",
+    )
+
+    CompositionLocalProvider(LocalBackdrop provides backdrop) {
+        Box(modifier) {
+            Box(
+                Modifier
+                    .matchParentSize()
+                    .layerBackdrop(backdrop)
+                    .background(g.background)
+                    .drawBehind { drawOrbs(g, a?.value ?: 0.3f, b?.value ?: 0.4f) },
+            )
+            content()
+        }
     }
 }
 

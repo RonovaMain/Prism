@@ -28,7 +28,7 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '8.9'
+          gradle-version: '8.13'
 
       # Секрет "Prism" = ваш .jks файл в base64.
       # Если секрета нет (например, PR из форка), APK всё равно соберётся — с debug-подписью.

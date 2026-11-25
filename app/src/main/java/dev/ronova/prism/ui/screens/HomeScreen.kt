@@ -77,6 +77,9 @@ import coil.request.videoFrameMillis
 import dev.ronova.prism.R
 import dev.ronova.prism.data.Keys
 import dev.ronova.prism.data.LibSort
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberCombinedBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import dev.ronova.prism.data.VideoItem
 import dev.ronova.prism.ui.PrismViewModel
 import dev.ronova.prism.ui.glass.GlassButton
@@ -87,6 +90,7 @@ import dev.ronova.prism.ui.glass.GlassSurface
 import dev.ronova.prism.ui.glass.GlassTabBar
 import dev.ronova.prism.ui.glass.GlassTag
 import dev.ronova.prism.ui.glass.GlassTextField
+import dev.ronova.prism.ui.glass.LocalBackdrop
 import dev.ronova.prism.ui.glass.PrismBackground
 import dev.ronova.prism.ui.glass.PrismFolderIcon
 import dev.ronova.prism.ui.glass.PrismLogo
@@ -146,15 +150,23 @@ fun HomeScreen(vm: PrismViewModel, animate: Boolean) {
     }
 
     PrismBackground(Modifier.fillMaxSize(), animate = animate) {
-        Crossfade(targetState = vm.tab, label = "tab") { tab ->
-            when (tab) {
-                0 -> VideosTab(vm)
-                1 -> FoldersTab(vm)
-                2 -> NetworkTab(vm)
-                else -> SettingsTab(vm)
+        // Содержимое записывается отдельным слоем: когда карточки прокручиваются под плавающей панелью
+        // вкладок, она преломляет и фон, и их. Сама панель в запись не входит (иначе стекло рисовало бы себя).
+        val background = LocalBackdrop.current
+        val content = rememberLayerBackdrop()
+        val tabBackdrop = rememberCombinedBackdrop(background, content)
+        Box(Modifier.matchParentSize().layerBackdrop(content)) {
+            Crossfade(targetState = vm.tab, label = "tab") { tab ->
+                when (tab) {
+                    0 -> VideosTab(vm)
+                    1 -> FoldersTab(vm)
+                    2 -> NetworkTab(vm)
+                    else -> SettingsTab(vm)
+                }
             }
         }
         GlassTabBar(
+            backdrop = tabBackdrop,
             items = tabs,
             selected = vm.tab,
             onSelect = {
@@ -479,7 +491,12 @@ private fun VideoCard(item: VideoItem, resumeMs: Long?, showText: Boolean, onCli
 @Composable
 private fun VideoRow(item: VideoItem, resumeMs: Long?, onClick: () -> Unit) {
     val g = LocalGlass.current
-    GlassSurface(Modifier.fillMaxWidth().glassClick(onClick = onClick), shape = RoundedCornerShape(26.dp), elevation = 4.dp) {
+    GlassSurface(
+        Modifier.fillMaxWidth().glassClick(onClick = onClick),
+        shape = RoundedCornerShape(26.dp),
+        elevation = 4.dp,
+        refraction = false,
+    ) {
         Row(Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
             Thumbnail(item, Modifier.width(132.dp).aspectRatio(16f / 9f), resumeMs, 16)
             Spacer(Modifier.width(14.dp))
@@ -559,6 +576,7 @@ private fun FoldersTab(vm: PrismViewModel) {
                 Modifier.fillMaxWidth().glassClick { vm.openFolderId = id },
                 shape = RoundedCornerShape(28.dp),
                 elevation = 5.dp,
+                refraction = false,
             ) {
                 Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                     PrismFolderIcon(46.dp)
