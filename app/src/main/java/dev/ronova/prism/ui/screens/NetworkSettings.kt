@@ -27,6 +27,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Code
+import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FolderOpen
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Link
@@ -71,6 +72,7 @@ import dev.ronova.prism.ui.theme.prismBrush
 private const val AUTHOR_NAME = "RonovaDev"
 private const val GITHUB_USER = "RonovaMain"
 private const val GITHUB_URL = "https://github.com/RonovaMain"
+private const val BOOSTY_URL = "https://boosty.to/ronovamain/donate"
 
 @Composable
 private fun ScreenTitle(text: String) {
@@ -361,6 +363,7 @@ internal fun SettingsTab(vm: PrismViewModel) {
                 }
                 AboutRow(Icons.Rounded.Person, stringResource(R.string.about_author), AUTHOR_NAME) { openUrl(ctx, GITHUB_URL) }
                 AboutRow(Icons.Rounded.Code, "GitHub", "github.com/$GITHUB_USER") { openUrl(ctx, GITHUB_URL) }
+                AboutRow(Icons.Rounded.Favorite, stringResource(R.string.about_support), "boosty.to/ronovamain") { openUrl(ctx, BOOSTY_URL) }
                 Text(
                     stringResource(R.string.about_engine),
                     color = g.textDim,

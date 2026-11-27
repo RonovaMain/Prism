@@ -92,5 +92,6 @@
     <string name="set_about">О приложении</string>
     <string name="about_tagline">Красивый плеер, который играет всё.</string>
     <string name="about_author">Автор</string>
+    <string name="about_support">Поддержать проект</string>
     <string name="about_engine">Движок воспроизведения: libVLC (LGPL). Prism — открытый проект.</string>
 </resources>
